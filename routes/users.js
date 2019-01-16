@@ -10,6 +10,7 @@
 var express = require('express');
 var router = express.Router();
 var user = require('../models/user')
+var comment = require('../models/comment')
  var crypto = require('crypto')
 // //var movie = require('../models/movie')
 // // var mail = require('../models/mail')
@@ -61,7 +62,36 @@ router.post('/register',function(req,res,next){
   })
 })
 //用户提交评论
-router.post('/postComment',function(req,res,next){})
+router.post('/postComment',function(req,res,next){
+  //验证完整性,这里使用简单的if方式,可以使用正则表达式对输入的格式进行验证
+  if(!req.body.username){
+    var username = "匿名用户"
+  }
+  if(!req.body.movie_id){
+    res.json({status:1,message:"电影ID为空"})
+  }
+  if(!req.body.context){
+    res.json({
+      status:1,message:"评论内容为空!"
+    })
+  }
+  //根据数据集建立一个新的数据内容
+  var saveComment = new comment({
+    movie_id:req.body.movie_id,
+    username:req.body.username?req.body.username:username,
+    context:req.body.context,
+    check:0
+  })
+
+  //保存合适的数据集
+  saveComment.save(function(err){
+    if(err){
+      res.json({status:1,message:err})
+    }else{
+      res.json({status:0,message:"评论成功"})
+    }
+  })
+})
 //用户点赞
 router.post('/support',function(req,res,next){})
 //用户找回密码
