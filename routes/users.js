@@ -11,9 +11,9 @@ var express = require('express');
 var router = express.Router();
 var user = require('../models/user')
 var comment = require('../models/comment')
- var crypto = require('crypto')
-// //var movie = require('../models/movie')
-// // var mail = require('../models/mail')
+var crypto = require('crypto')
+var movie = require('../models/movie')
+var mail = require('../models/mail')
 // // var comment = require('../models/comment')
  const init_token = 'TKL02O'
 
@@ -92,8 +92,79 @@ router.post('/postComment',function(req,res,next){
     }
   })
 })
+//新增电影
+router.post('/newmovie',function(req,res,next){
+  if(!req.body.movieNumSuppose){
+    var movieNumSuppose = 0
+  }
+  if(!req.body.movieNumDownload){
+    var movieNumDownload = 0
+  }
+  //保存合适的数据集
+  if(!req.body.movie_id){
+    res.json({status:1,message:"电影id传递失败"})
+  }
+
+
+  //根据数据集建立一个新的数据内容
+  var movie1 = new movie({
+    movie_id:req.body.movie_id,
+    movieNumSuppose:req.body.movieNumSuppose?req.body.movieNumSuppose:movieNumSuppose,
+    movieNumDownload:req.body.movieNumDownload?req.body.movieNumDownload:movieNumDownload
+  })
+movie1.save(function(err,supportMovie){
+  if(err){
+    res.json({status:1,message:"电影保存失败",data:err})
+  }else{
+    res.json({status:0,message:"电影保存成功",data:supportMovie})
+  }
+})
+
+})
 //用户点赞
-router.post('/support',function(req,res,next){})
+router.post('/support',function(req,res,next){
+  // if(!req.body.movieNumSuppose){
+  //   var movieNumSuppose = 0
+  // }
+  // if(!req.body.movieNumDownload){
+  //   var movieNumDownload = 0
+  // }
+  //保存合适的数据集
+  if(!req.body.movie_id){
+    res.json({status:1,message:"电影id传递失败"})
+  }
+
+
+  //根据数据集建立一个新的数据内容
+//   var movie1 = new movie({
+//     movie_id:req.body.movie_id,
+//     movieNumSuppose:req.body.movieNumSuppose?req.body.movieNumSuppose:movieNumSuppose,
+//     movieNumDownload:req.body.movieNumDownload?req.body.movieNumDownload:movieNumDownload
+//   })
+// movie1.save(function(err){
+//   if(err){
+//     res.json({status:1,message:err})
+//   }else{
+//     res.json({status:0,message:"电影保存失败"})
+//   }
+// })
+
+
+  movie.findById(req.body.movie_id,function(err,supportMovie){
+    //更新操作
+    if(err){
+      res.json({message:"更新失败"})
+    }else{
+    movie.update({_id:req.body.movie_id},
+      {movieNumSuppose:supportMovie.movieNumSuppose+1},
+    function(err){
+      if(err){res.json({status:1,message:"点赞失败",data:err})}
+      res.json({status:0,message:"点赞成功"})
+    })
+    // res.json({data:supportMovie})
+  }
+  })
+})
 //用户找回密码
 router.post('/findPassword',function(req,res,next){
   //需要输入用户的邮箱信息和手机信息,同时可以更新密码
@@ -163,8 +234,66 @@ router.post('/findPassword',function(req,res,next){
     })
   }
 })
+//用户下载接口
+router.post('/download',function(req,res,next){
+  //验证完整性,这里使用简单的if方式,可以使用正则表达式对输入的格式进行验证
+  if(!req.body.movie_id){
+    res.json({status:1,message:"电影ID传递失败"})
+  }
+  movie.findById(req.body.movie_id,function(err,supportMovie){
+    //更新操作
+    movie.update({_id:req.body.movie_id},
+      {movieNumDownload:supportMovie.movieNumDownload+1},
+      function(err){
+        if(err){
+          res.json({status:1,message:"点赞失败",data:err})
+        }
+        res.json({status:0,message:"下载成功",data:supportMovie.movieDownload})
+      }
+    )
+  })
+})
 //用户发送站内信
-router.post('/sendMail',function(req,res,next){})
+router.post('/sendEmail',function(req,res,next){
+  //验证完整性,这里使用简单的if方式,可以使用正则表达式对输入的格式进行验证
+  if(!req.body.token){
+    res.json({status:1,message:"用户登录状态错误"})
+  }
+  if(!req.body.user_id){
+    res.json({status:1,message:"用户登录状态出错"})
+  }
+  if(!req.body.toUserName){
+    res.json({status:1,message:"未选择相关用户"})
+  }
+  if(!req.body.title){
+    res.json({status:1,message:"标题不能为空"})
+  }
+  if(!req.body.context){
+    res.json({statsu:1,message:"内容不能为空"})
+  }
+  if(req.body.token == getMD5Password(req.body.user_id)){
+    //存入数据库之前需要先在数据库中获取到要发送至用户的user_id
+    user.findByUsername(req.body.toUserName,function(err,toUser){
+      if(toUser.length !=0){
+        var NewMail = new mail({
+          formUser:req.body.user_id,
+          toUser:toUser[0]._id,
+          title:req.body.title,
+          context:req.body.context
+        })
+        NewMail.save(
+            res.json({status:0,message:"发送成功"})
+        )
+      }else{
+        res.json({status:1,message:"您发送的对象不存在"})
+      }
+    })
+  }else{
+    res.json({
+      status:1,message:"用户登录错误"
+    })
+  }
+})
 //用户显示站内信,其中的receive参数值为1时是发送的内容,值为2时是收到的内容
 router.post('/receiveMail',function(req,res,next){})
 //获取MD5的值
